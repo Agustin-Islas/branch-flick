@@ -10,6 +10,8 @@ class Board extends React.Component {
                         <Square
                             value={cell}
                             key={i + "." + j}
+                            index={i + "." + j}
+                            onClick={(index) =>  this.props.onClick(index)}
                         />
                     )
                 )}

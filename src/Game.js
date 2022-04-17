@@ -20,6 +20,7 @@ export function colorToCss(color) {
     case "g": return "green";
     case "b": return "blue";
     case "y": return "yellow";
+    default:;
   }
   return color;
 }
@@ -33,9 +34,13 @@ class Game extends React.Component {
       turns: 0,
       grid: null,
       complete: false,  // true if game is complete, false otherwise
-      waiting: false
+      waiting: false,
+      initCell: [0, 0],
+      adjacents: [[0, 0]] //,[0,1],[0,2],[0,3],[0,4]]
     };
+    this.handleClickInit = this.handleClickInit.bind(this);
     this.handleClick = this.handleClick.bind(this);
+    this.searchAdjacents = this.searchAdjacents.bind(this);
     this.handlePengineCreate = this.handlePengineCreate.bind(this);
     this.pengine = new PengineClient(this.handlePengineCreate);
   }
@@ -51,7 +56,35 @@ class Game extends React.Component {
     });
   }
 
-  handleClick(color) {
+  handleClickInit(index) {
+    if (this.state.turns === 0) {
+      //parsear y setear initCell
+      let cell = this.parsearIndex(index);
+
+      this.setState({
+        initCell: [Number(cell[0]), Number(cell[1])],
+        adjacents: [[Number(cell[0]), Number(cell[1])]]
+      })
+    }
+  }
+
+  parsearIndex(index) {
+    let i=0;
+    let row="";
+    let column="";
+    while (index[i] !== ".") {
+      row += index[i];
+      i++;
+    }
+    i++;
+    while (i < index.length) {
+      column += index[i];
+      i++;
+    }
+    return [row, column];
+  }
+
+  async handleClick(color) {
     // No action on click if game is complete or we are waiting.
     if (this.state.complete || this.state.waiting) {
       return;
@@ -73,23 +106,51 @@ class Game extends React.Component {
     //        [r,b,b,v,p,y,p,r,b,g,p,y,b,r],
     //        [v,g,p,b,v,v,g,g,g,b,v,g,g,g]],r, Grid)
     const gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
-    const queryS = "flick(" + gridS + "," + color + ", Grid)";
+    let lista = JSON.stringify(this.state.adjacents);
+    const queryS = "flickSheall(" + gridS + "," + lista + "," + color + ", Grid)";
+    //const queryS = "flick(" + gridS + "," + this.state.initCell[0] + "," + this.state.initCell[1] + "," + color + ", Grid)";
+    //let queryFlickAdj=null;
+
     this.setState({
       waiting: true
     });
     this.pengine.query(queryS, (success, response) => {
       if (success) {
         this.setState({
-          grid: response['Grid'],
-          turns: this.state.turns + 1,
-          waiting: false
+          grid: response['Grid']
         });
+
+        // buscar y actualizar adj
+        // searchAdj 
+        this.searchAdjacents(color);
+        
+        this.setState({
+          turns: this.state.turns + 1,
+          waiting: false,
+        })
+        
       } else {
         // Prolog query will fail when the clicked color coincides with that in the top left cell.
         this.setState({
           waiting: false
         });
+        console.log("falló");
       }
+    });
+  }
+
+  searchAdjacents(color) {
+    let lista = JSON.stringify(this.state.adjacents);
+    let gridAdj = JSON.stringify(this.state.grid).replaceAll('"', "");
+    let queryAdj = "searchAdj(" + gridAdj + "," + lista + "," + color + ", NewAdj)";
+    this.pengine.query(queryAdj, (success, response) => {
+      if (success) {
+        this.setState({
+          adjacents: response['NewAdj'].reverse()
+        });
+      } else {
+          console.log("falló searchAdjacents");
+        }
     });
   }
 
@@ -112,9 +173,14 @@ class Game extends React.Component {
           <div className="turnsPanel">
             <div className="turnsLab">Turns</div>
             <div className="turnsNum">{this.state.turns}</div>
+
+            <div className="capturedCells">CAPTURED CELLS</div>
+            <div className="capturedNumber">{this.state.adjacents.length}</div>
           </div>
         </div>
-        <Board grid={this.state.grid} />
+        <Board grid={this.state.grid}
+               onClick={(index) => this.handleClickInit(index)}
+        />
       </div>
     );
   }
