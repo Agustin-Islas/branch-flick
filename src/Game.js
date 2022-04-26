@@ -35,16 +35,17 @@ class Game extends React.Component {
       grid: null,
       complete: false,  // true if game is complete, false otherwise
       waiting: false,
-      initCell: [0, 0],
-      adjacents: [[0, 0]] //,[0,1],[0,2],[0,3],[0,4]]
+      captured: 1
     };
     this.handleClickInit = this.handleClickInit.bind(this);
-    this.handleClick = this.handleClick.bind(this);
-    this.searchAdjacents = this.searchAdjacents.bind(this);
+    this.handleClick     = this.handleClick.bind(this);
+    this.findAdjacents   = this.findAdjacents.bind(this);
+    this.capturedCells   = this.capturedCells.bind(this);
+    this.checkEnd        = this.checkEnd.bind(this);
     this.handlePengineCreate = this.handlePengineCreate.bind(this);
     this.pengine = new PengineClient(this.handlePengineCreate);
   }
-
+  
   handlePengineCreate() {
     const queryS = 'init(Grid)';
     this.pengine.query(queryS, (success, response) => {
@@ -52,6 +53,7 @@ class Game extends React.Component {
         this.setState({
           grid: response['Grid']
         });
+      this.handleClickInit("0.0");
       }
     });
   }
@@ -60,11 +62,22 @@ class Game extends React.Component {
     if (this.state.turns === 0) {
       //parsear y setear initCell
       let cell = this.parsearIndex(index);
-
-      this.setState({
-        initCell: [Number(cell[0]), Number(cell[1])],
-        adjacents: [[Number(cell[0]), Number(cell[1])]]
-      })
+      const queryInit = "setInit(" +  Number(cell[0]) + "," + Number(cell[1]) + ")";
+    
+      this.pengine.query(queryInit, (success, response) => {
+        if(success) {
+          // cambiar borde de init cell
+          console.log("init"+ cell);
+          this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")", (success, response) => {
+            if(success) {
+              // cambiar borde de init cell
+              console.log("adj ");
+              } else {
+                console.log("falló adj");
+              }
+          });
+        }
+      });
     }
   }
 
@@ -84,7 +97,7 @@ class Game extends React.Component {
     return [row, column];
   }
 
-  async handleClick(color) {
+  handleClick(color) {
     // No action on click if game is complete or we are waiting.
     if (this.state.complete || this.state.waiting) {
       return;
@@ -105,25 +118,22 @@ class Game extends React.Component {
     //        [r,p,g,y,v,y,r,b,v,r,b,y,r,v],
     //        [r,b,b,v,p,y,p,r,b,g,p,y,b,r],
     //        [v,g,p,b,v,v,g,g,g,b,v,g,g,g]],r, Grid)
+    
     const gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
-    let lista = JSON.stringify(this.state.adjacents);
-    const queryS = "flickSheall(" + gridS + "," + lista + "," + color + ", Grid)";
-    //const queryS = "flick(" + gridS + "," + this.state.initCell[0] + "," + this.state.initCell[1] + "," + color + ", Grid)";
-    //let queryFlickAdj=null;
+    const queryS = `flickAdjacents(${gridS},${color},Grid)`;
 
     this.setState({
       waiting: true
     });
+
     this.pengine.query(queryS, (success, response) => {
       if (success) {
         this.setState({
           grid: response['Grid']
         });
 
-        // buscar y actualizar adj
-        // searchAdj 
-        this.searchAdjacents(color);
-        
+        this.findAdjacents(color);
+
         this.setState({
           turns: this.state.turns + 1,
           waiting: false,
@@ -134,24 +144,50 @@ class Game extends React.Component {
         this.setState({
           waiting: false
         });
-        console.log("falló");
+        console.log("falló flick");
+      }
+    });
+  }
+  
+  findAdjacents(color) {
+    let gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
+    let queryFind = "findAdjacentC(" + gridS + "," + color + ")";
+    this.pengine.query(queryFind, (success, response) => {
+      if (success) {
+        console.log("findAdj success");
+        //actualized captured
+        this.capturedCells();
+      } else {
+          console.log("falló findAdj");
+        }
+    });
+  }
+
+  capturedCells() {
+    let queryC = "capturedCells(Captured)";
+    this.pengine.query(queryC, (success, response) => {
+      if (success) {
+        this.setState({
+          captured: response['Captured']
+        });
+        this.checkEnd();
+      } else {
+        console.log("falló Captured");
       }
     });
   }
 
-  searchAdjacents(color) {
-    let lista = JSON.stringify(this.state.adjacents);
-    let gridAdj = JSON.stringify(this.state.grid).replaceAll('"', "");
-    let queryAdj = "searchAdj(" + gridAdj + "," + lista + "," + color + ", NewAdj)";
-    this.pengine.query(queryAdj, (success, response) => {
+  checkEnd() {
+    let queryEnd = "checkEnd(End)";
+    this.pengine.query(queryEnd, (success, response) => {
       if (success) {
         this.setState({
-          adjacents: response['NewAdj'].reverse()
+          complete: response['End']
         });
       } else {
-          console.log("falló searchAdjacents");
-        }
-    });
+        console.log("Falló CheckEnd");
+      }
+    })
   }
 
   render() {
@@ -175,7 +211,9 @@ class Game extends React.Component {
             <div className="turnsNum">{this.state.turns}</div>
 
             <div className="capturedCells">CAPTURED CELLS</div>
-            <div className="capturedNumber">{this.state.adjacents.length}</div>
+            <div className="capturedNumber">{this.state.captured}</div>
+
+            <div className="End">{this.state.complete}</div>
           </div>
         </div>
         <Board grid={this.state.grid}
