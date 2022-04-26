@@ -1,18 +1,104 @@
 :- module(proylcc, 
 	[  
-		flick/3
+		initCell/1,
+		adjacentC/1,
+		setInit/2,
+		setAdjacent/2,
+		checkEnd/1,
+		flickAdjacents/3,
+		findAdjacentC/2
 	]).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% flick(+Grid, +Color, -FGrid)
-%
-% FGrid es el resultado de hacer 'flick' de la grilla Grid con el color Color.
-% Retorna false si Color coincide con el color de la celda superior izquierda de la grilla. 
+:-use_module(library(lists)).
 
-flick(Grid, Color, FGrid):-
-	Grid = [F|Fs],
-	F = [X|Xs],
-	Color \= X,
-	FGrid = [[Color|Xs]|Fs].
+:-dynamic adjacentC/1.
 
+:-dynamic initCell/1.
+
+initCell([0, 0]).
+adjacentC([[0, 0]]).
+
+setInit(X,Y):-
+	checkPos(X,Y),
+	initCell(Cell),
+	retract(initCell(Cell)),
+	assert(initCell([X,Y])),
+	setAdjacent(X,Y).
+
+checkPos(X,Y):-
+	X > -1, X < 15,
+	Y > -1, Y < 15.
+setAdjacent(X, Y):-
+	retract(adjacentC(L)),
+    assert(adjacentC([[X,Y]])).
+
+findAdjacentC(Grid, Color):-
+	adjacentC(List),
+	findAux(Grid, List, Color).
+findAux(Grid, List, Color):-
+	List = [L|Ls],
+	L = [X,Y],
+	adjacents(Grid, X, Y, Color),
+	findAux(Grid, Ls, Color).
+findAux(_Grid, [], _Color).
+
+capturedCells(Captured):-
+	adjacentC(List),
+	list_length(Captured, List).
+list_length(0, []).
+list_length(L, [_H|T]) :-
+	list_length(N, T),
+	L is N+1.
+
+checkEnd(true):-
+	capturedCells(Captured),
+	Captured == 196.
+checkEnd(false).
+
+flickAdjacents(Grid, Color, FGrid):-
+	adjacentC(List),
+	flickAux(Grid, List, Color, FGrid).
+
+flickAux(Grid, List, Color, FGrid):-
+	List = [L|Ls],
+	L = [X,Y],
+	flickAux(Grid, Ls, Color, FGridAux),
+	flick(FGridAux, X, Y, Color, FGrid).
+flickAux(Grid, [], _Color, Grid).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+adjacents(Grid, X, Y, Color):-
+	X1 is X-1, X2 is X+1,
+	Y1 is Y-1, Y2 is Y+1,
+	isAdj(Grid, X1, Y, Color),
+	isAdj(Grid, X2, Y, Color),
+	isAdj(Grid, X, Y1, Color),
+	isAdj(Grid, X, Y2, Color).
+
+isAdj(Grid, X, Y, Color):-
+	getPos(Grid, X, Y, Elem),
+	Elem == Color,
+	adjacentC(L),
+	not(member([X,Y], L)),
+	retract(adjacentC(L)), union(L, [[X,Y]], NewL),
+	assert(adjacentC(NewL)),
+	adjacents(Grid, X, Y, Color).
+
+isAdj(_Grid, _X, _Y, _Color).
+
+
+getPos(Grid, X, Y, Elem):-
+	nth0(X,Grid,Column),
+	nth0(Y,Column,Elem).
+
+flick(Grid, X, Y, Color, FGrid):-
+	nth0(X,Grid,Column),
+	nth0(Y,Column,Elem),
+	Color \= Elem,
+	setPos(Y,Color,Column,FColumn),
+	setPos(X,FColumn,Grid,FGrid).
+
+setPos(Pos, NewElem, [H|T], [H|R]):-
+	Pos > -1, PosN is Pos-1, setPos(PosN, NewElem, T, R).
+setPos(0, NewElem, [_Elem|T], [NewElem|T]).
