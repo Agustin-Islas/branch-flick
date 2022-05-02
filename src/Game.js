@@ -35,7 +35,8 @@ class Game extends React.Component {
       grid: null,
       complete: false,  // true if game is complete, false otherwise
       waiting: false,
-      captured: 1
+      captured: 1,
+      plays: []
     };
     this.handleClickInit = this.handleClickInit.bind(this);
     this.handleClick     = this.handleClick.bind(this);
@@ -53,7 +54,16 @@ class Game extends React.Component {
         this.setState({
           grid: response['Grid']
         });
-      this.handleClickInit("0.0");
+        
+        let queryR = "resetStackPlays";
+        this.pengine.query(queryR, (success, response) => {
+              if(success) {
+                console.log("success stackPlays()");
+              } else {
+                console.log("fail stackPlays()");
+              }
+              this.handleClickInit("0.0");
+        });
       }
     });
   }
@@ -69,11 +79,8 @@ class Game extends React.Component {
           // cambiar borde de init cell
           console.log("init"+ cell);
           this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")", (success, response) => {
-            if(success) {
-              // cambiar borde de init cell
-              console.log("adj ");
-              } else {
-                console.log("falló adj");
+            if(!success) {
+              console.log("falló adj");
               }
           });
         }
@@ -132,7 +139,16 @@ class Game extends React.Component {
           grid: response['Grid']
         });
 
-        this.findAdjacents(color);
+        this.pengine.query("pushStackPlays(" + color + ", Plays)", (success, response) => {
+          if (success) {
+            this.setState({
+              plays: response['Plays']
+            })
+            this.findAdjacents(color);
+          } else {
+            console.log("fail pushPlays()");
+          }
+        });
 
         this.setState({
           turns: this.state.turns + 1,
@@ -212,6 +228,9 @@ class Game extends React.Component {
 
             <div className="capturedCells">CAPTURED CELLS</div>
             <div className="capturedNumber">{this.state.captured}</div>
+
+            <div className="Plays">PLAYS</div>
+            <div className="PlaysStack"> {this.state.plays} </div>
 
             <div className="End">{this.state.complete}</div>
           </div>

@@ -3,10 +3,13 @@
 		initCell/1,
 		adjacentC/1,
 		setInit/2,
+		stackPlays/1,
 		setAdjacent/2,
 		checkEnd/1,
 		flickAdjacents/3,
-		findAdjacentC/2
+		findAdjacentC/2,
+		pushStackPlays/2,
+		resetStackPlays/0
 	]).
 
 :-use_module(library(lists)).
@@ -14,6 +17,8 @@
 :-dynamic adjacentC/1.
 
 :-dynamic initCell/1.
+
+:-dynamic stackPlays/1.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Almacena la celda inicial del juego.
@@ -24,6 +29,21 @@ initCell([0, 0]).
 % Almacena las celdas adjacentes capturadas hasta el momento.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 adjacentC([[0, 0]]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pushStackPlays()
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+pushStackPlays(Color, [Color|S]):-
+    stackPlays(S),
+    S \= [],
+    retract(stackPlays(S)),
+	assert(stackPlays([Color|S])).
+
+pushStackPlays(Color, [Color]):-
+	assert(stackPlays([Color])).
+
+resetStackPlays():-
+    retract(stackPlays(_S)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % setInit(+X, +Y)
@@ -46,11 +66,11 @@ checkPos(X,Y):-
 	Y > -1, Y < 15.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% setAdjacent(+X, +Ý)
+% setAdjacent(+X, +Y)
 % reemplaza las adjacencias actuales por la lista que contiene [X, Y].
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 setAdjacent(X, Y):-
-	retract(adjacentC(L)),
+	retract(adjacentC(_L)),
     assert(adjacentC([[X,Y]])).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
