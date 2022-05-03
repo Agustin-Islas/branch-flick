@@ -212,43 +212,51 @@ class Game extends React.Component {
       return null;
     }
     return (
-      <div className="game">
-        <div className="leftPanel">
-          <div className="buttonsPanel">
-            {colors.map(color =>
-              <button
-                className="colorBtn"
-                style={{ backgroundColor: colorToCss(color) }}
-                onClick={() => this.handleClick(color)}
-                key={color}
-              />)}
-          </div>
-          <div className="panelGeneral">
-            <div className="turnsLab">Turns</div>
-            <div className="turnsNum">{this.state.turns}</div>
-
-            <div className="capturedLab">CAPTURED CELLS</div>
-            <div className="capturedNum">{this.state.captured}</div>
-
-            <div  className="playsLab">PLAYS</div>
-            <div id="playsStack" className="playsStack"> 
-              {
-                this.state.plays.map((cell, i) =>
-                  <button
-                  className="playBtn"
-                  style={{ backgroundColor: colorToCss(cell)}}
-                  key={i}
+      this.state.complete === false?
+        <div className="game">
+          <div className="leftPanel">
+            <div className="buttonsPanel">
+              {colors.map(color =>
+                <button
+                  className="colorBtn"
+                  style={{ backgroundColor: colorToCss(color) }}
+                  onClick={() => this.handleClick(color)}
+                  key={color}
                 />)}
             </div>
+            <div className="panelGeneral">
+              <div className="turnsLab">Turns</div>
+              <div className="turnsNum">{this.state.turns}</div>
 
-            <div className="End">{this.state.complete}</div>
+              <div className="capturedLab">CAPTURED CELLS</div>
+              <div className="capturedNum">{this.state.captured}</div>
+
+              <div  className="playsLab">PLAYS</div>
+              <div id="playsStack" className="playsStack"> 
+                {
+                  this.state.plays.map((cell, i) =>
+                    <button
+                    className="playBtn"
+                    style={{ backgroundColor: colorToCss(cell)}}
+                    key={i}
+                  />)}
+              </div>
+
+              <div className="End">{this.state.complete}</div>
+            </div>
+          </div>
+            <Board grid={this.state.grid}
+                onClick={(index) => this.handleClickInit(index)}
+                initCell={this.state.initCell}
+            />
+        </div>
+        : 
+        <div className='endGame'>
+          <div className='endPanel'>
+            <h1  className='titule'> ¡You win in {this.state.turns} turns!</h1>
+            <button onClick={() => window.location.reload()} className='playAgain'>PLAY AGAIN</button>
           </div>
         </div>
-        <Board grid={this.state.grid}
-               onClick={(index) => this.handleClickInit(index)}
-               initCell={this.state.initCell}
-        />
-      </div>
     );
   }
 }

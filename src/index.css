@@ -93,3 +93,35 @@ body {
   grid-template-columns: repeat(14, 40px);
   grid-template-rows: repeat(14, 40px);
 }
+
+.endGame {
+  justify-content: center;
+  display: flex;
+  margin: 100px;
+}
+
+.endPanel {
+  border: 2px solid #ccc;
+  align-items: center;
+  flex-direction: row;
+  padding: 50px;
+}
+
+.playAgain {
+  background-color: #008CBA;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin-top: 30px;
+  align-items: center; 
+}
+
+.titule {
+  color: white;
+  margin: auto;
+  border: 1px solid #0a192f;
+}
