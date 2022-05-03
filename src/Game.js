@@ -36,6 +36,7 @@ class Game extends React.Component {
       complete: false,  // true if game is complete, false otherwise
       waiting: false,
       captured: 1,
+      initCell: [0,0],
       plays: []
     };
     this.handleClickInit = this.handleClickInit.bind(this);
@@ -55,14 +56,8 @@ class Game extends React.Component {
           grid: response['Grid']
         });
         
-        let queryR = "resetStackPlays";
-        this.pengine.query(queryR, (success, response) => {
-              if(success) {
-                console.log("success stackPlays()");
-              } else {
-                console.log("fail stackPlays()");
-              }
-              this.handleClickInit("0.0");
+        this.pengine.query("resetStackPlays", (success, response) => {
+            this.handleClickInit("0.0");
         });
       }
     });
@@ -77,11 +72,17 @@ class Game extends React.Component {
       this.pengine.query(queryInit, (success, response) => {
         if(success) {
           // cambiar borde de init cell
-          console.log("init"+ cell);
+          console.log("init: "+ cell);
           this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")", (success, response) => {
-            if(!success) {
+            if(success) {
+              // cambiar borde de init cell
+              console.log("adj ");
+              this.setState({
+                initCell: cell
+              });
+            } else {
               console.log("falló adj");
-              }
+            }
           });
         }
       });
@@ -222,21 +223,30 @@ class Game extends React.Component {
                 key={color}
               />)}
           </div>
-          <div className="turnsPanel">
+          <div className="panelGeneral">
             <div className="turnsLab">Turns</div>
             <div className="turnsNum">{this.state.turns}</div>
 
-            <div className="capturedCells">CAPTURED CELLS</div>
-            <div className="capturedNumber">{this.state.captured}</div>
+            <div className="capturedLab">CAPTURED CELLS</div>
+            <div className="capturedNum">{this.state.captured}</div>
 
-            <div className="Plays">PLAYS</div>
-            <div className="PlaysStack"> {this.state.plays} </div>
+            <div  className="playsLab">PLAYS</div>
+            <div id="playsStack" className="playsStack"> 
+              {
+                this.state.plays.map((cell, i) =>
+                  <button
+                  className="playBtn"
+                  style={{ backgroundColor: colorToCss(cell)}}
+                  key={i}
+                />)}
+            </div>
 
             <div className="End">{this.state.complete}</div>
           </div>
         </div>
         <Board grid={this.state.grid}
                onClick={(index) => this.handleClickInit(index)}
+               initCell={this.state.initCell}
         />
       </div>
     );

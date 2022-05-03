@@ -7,6 +7,14 @@ class Board extends React.Component {
             <div className="board">
                 {this.props.grid.map((row, i) =>
                     row.map((cell, j) =>
+                        Number(this.props.initCell[0]) === i && Number(this.props.initCell[1]) === j?
+                        <Square
+                            value={cell}
+                            key={i + "." + j}
+                            index={i + "." + j}
+                            onClick={(index) =>  this.props.onClick(index)}
+                            borde = {true}
+                        /> :
                         <Square
                             value={cell}
                             key={i + "." + j}
