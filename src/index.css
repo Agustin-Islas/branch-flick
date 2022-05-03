@@ -73,8 +73,7 @@ body {
   flex-direction: column;
   width: 50px;
   max-height: 225px;
-  overflow-y: scroll;
-  border: 1px solid darkgray;
+  overflow-y: auto;
 }
 
 .playBtn {
@@ -124,4 +123,26 @@ body {
   color: white;
   margin: auto;
   border: 1px solid #0a192f;
+}
+
+/* personalized scrollbar */
+
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
