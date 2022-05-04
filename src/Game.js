@@ -31,13 +31,13 @@ class Game extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      turns: 0,
-      grid: null,
+      turns: 0,         // turno actual de la partida
+      grid: null,       // grilla de colores
       complete: false,  // true if game is complete, false otherwise
-      waiting: false,
-      captured: 1,
-      initCell: [0,0],
-      plays: []
+      waiting: false,   // true si el juego esta procesando informacion, false en caso contrario
+      captured: 1,      // total de celdas capturadas hasta el momento
+      initCell: [0,0],  // celda inicial, por defecto es la celda [0, 0]
+      plays: []         // pila de jugadas relizadas hasta el momento.
     };
     this.handleClickInit = this.handleClickInit.bind(this);
     this.handleClick     = this.handleClick.bind(this);
@@ -56,39 +56,40 @@ class Game extends React.Component {
           grid: response['Grid']
         });
         
+        // resetea el estado plays a vacío.
         this.pengine.query("resetStackPlays", (success, response) => {
+          // setea la celda [0, 0] como inicial.
             this.handleClickInit("0.0");
         });
       }
     });
   }
 
+  /**
+   * Si el estado turns es 0, setea index como nueva initCell y la agrega a la lista de adjacencias.
+   * @param index string de la forma "num1.num2"
+   */
   handleClickInit(index) {
     if (this.state.turns === 0) {
-      //parsear y setear initCell
       let cell = this.parsearIndex(index);
       const queryInit = "setInit(" +  Number(cell[0]) + "," + Number(cell[1]) + ")";
     
       this.pengine.query(queryInit, (success, response) => {
         if(success) {
-          // cambiar borde de init cell
-          console.log("init: "+ cell);
-          this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")", (success, response) => {
-            if(success) {
-              // cambiar borde de init cell
-              console.log("adj ");
-              this.setState({
-                initCell: cell
-              });
-            } else {
-              console.log("falló adj");
-            }
+          this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")", (success, response) => {});          
+          this.setState({
+            initCell: cell
           });
         }
       });
     }
   }
 
+  /**
+   * Recibe un string y lo tranforma en un array.
+   * @param index string "num1.num2"
+   * @returns array [num1, num2]
+   */
   parsearIndex(index) {
     let i=0;
     let row="";
@@ -105,6 +106,11 @@ class Game extends React.Component {
     return [row, column];
   }
 
+  /**
+   * Si el juego no termino o no esta en espera, cambia el color de initCell y de sus adjacentesC* a el color
+   * recibido por parametro.
+   * @param color char que representa el color selecionado.
+   */
   handleClick(color) {
     // No action on click if game is complete or we are waiting.
     if (this.state.complete || this.state.waiting) {
@@ -136,20 +142,12 @@ class Game extends React.Component {
 
     this.pengine.query(queryS, (success, response) => {
       if (success) {
+        // Realiza el flick de initCell y sus adjacentC*. Actuliza el estado grid.
         this.setState({
           grid: response['Grid']
         });
 
-        this.pengine.query("pushStackPlays(" + color + ", Plays)", (success, response) => {
-          if (success) {
-            this.setState({
-              plays: response['Plays']
-            })
-            this.findAdjacents(color);
-          } else {
-            console.log("fail pushPlays()");
-          }
-        });
+        this.pushStackPlays(color);
 
         this.setState({
           turns: this.state.turns + 1,
@@ -165,21 +163,42 @@ class Game extends React.Component {
       }
     });
   }
+
+  /**
+   *  agrega color a la pila de jugadas realizadas. 
+   * @param color char que representa el color selecionado.
+   */
+  pushStackPlays(color) {
+    this.pengine.query("pushStackPlays(" + color + ", Plays)", (success, response) => {
+      if (success) {
+        // Actualiza el estado plays con el nuevo color agregado.
+        this.setState({
+          plays: response['Plays']
+        })
+      } else {
+        console.log("fail pushPlays()");
+      }
+      this.findAdjacents(color);
+    });
+  }
   
+  /**
+   * busca nuevas celdas adjacentC* a la lista de adjacencias actual y las incorpora a la lista.
+   * @param color char que representa el color selecionado.
+   */
   findAdjacents(color) {
     let gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
     let queryFind = "findAdjacentC(" + gridS + "," + color + ")";
     this.pengine.query(queryFind, (success, response) => {
       if (success) {
-        console.log("findAdj success");
-        //actualized captured
         this.capturedCells();
-      } else {
-          console.log("falló findAdj");
-        }
+      }
     });
   }
 
+  /**
+   * Calcula y actualiza el estado Captured.
+   */
   capturedCells() {
     let queryC = "capturedCells(Captured)";
     this.pengine.query(queryC, (success, response) => {
@@ -188,12 +207,13 @@ class Game extends React.Component {
           captured: response['Captured']
         });
         this.checkEnd();
-      } else {
-        console.log("falló Captured");
       }
     });
   }
 
+  /**
+   * Checkea si el juego finalizo actualizando el estado complete.
+   */
   checkEnd() {
     let queryEnd = "checkEnd(End)";
     this.pengine.query(queryEnd, (success, response) => {
@@ -201,8 +221,6 @@ class Game extends React.Component {
         this.setState({
           complete: response['End']
         });
-      } else {
-        console.log("Falló CheckEnd");
       }
     })
   }
@@ -253,7 +271,7 @@ class Game extends React.Component {
         : 
         <div className='endGame'>
           <div className='endPanel'>
-            <h1  className='titule'> ¡You win in {this.state.turns} turns!</h1>
+            <h1  className='titule'> ¡You won in {this.state.turns} turns!</h1>
             <button onClick={() => window.location.reload()} className='playAgain'>PLAY AGAIN</button>
           </div>
         </div>

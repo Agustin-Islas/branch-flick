@@ -31,7 +31,8 @@ initCell([0, 0]).
 adjacentC([[0, 0]]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% pushStackPlays()
+% pushStackPlays(+Color, -Plays)
+% Plays es la pila de plays actuales a la que se le inserto Color como head.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 pushStackPlays(Color, [Color|S]):-
     stackPlays(S),
@@ -42,6 +43,10 @@ pushStackPlays(Color, [Color|S]):-
 pushStackPlays(Color, [Color]):-
 	assert(stackPlays([Color])).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% resetStackPlays()
+% vacia la pila de plays actuales.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 resetStackPlays():-
     retract(stackPlays(_S)).
 
@@ -72,7 +77,7 @@ checkPos(X,Y):-
 setAdjacent(X, Y):-
 	retract(adjacentC(_L)),
     assert(adjacentC([[X,Y]])).
-
+	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % findAdjacentC(+Grid, +Color)
 % Recibe una grilla Grid y un color Color y busca y agrega nuevos adjacentes
