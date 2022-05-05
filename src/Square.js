@@ -3,7 +3,7 @@ import { colorToCss } from './Game';
 
 class Square extends React.Component {
     render() {
-        if (this.props.borde === true) {
+        if (this.props.border === true) {
             return (
                 <div 
                     onClick={() => this.props.onClick(this.props.index)} 

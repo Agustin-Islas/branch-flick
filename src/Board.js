@@ -13,7 +13,7 @@ class Board extends React.Component {
                             key={i + "." + j}
                             index={i + "." + j}
                             onClick={(index) =>  this.props.onClick(index)}
-                            borde = {true}
+                            border = {true}
                         /> :
                         <Square
                             value={cell}

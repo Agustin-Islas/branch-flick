@@ -101,7 +101,7 @@ findAux(_Grid, [], _Color).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % capturedCells(-Captured)
-% -Captured es la cantidad de celdas adjacentes capturadas hasta el momento.
+% Captured es la cantidad de celdas adjacentes capturadas hasta el momento.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 capturedCells(Captured):-
 	adjacentC(List),
@@ -146,7 +146,6 @@ flickAux(Grid, List, Color, FGrid):-
 	flickAux(Grid, Ls, Color, FGridAux),
 	flick(FGridAux, X, Y, Color, FGrid).
 flickAux(Grid, [], _Color, Grid).
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % adjacent(+Grid, +X, +Y, +Color)

@@ -34,10 +34,10 @@ class Game extends React.Component {
       turns: 0,         // turno actual de la partida
       grid: null,       // grilla de colores
       complete: false,  // true if game is complete, false otherwise
-      waiting: false,   // true si el juego esta procesando informacion, false en caso contrario
+      waiting: false,   // true si el juego esta procesando información, false en caso contrario
       captured: 1,      // total de celdas capturadas hasta el momento
       initCell: [0,0],  // celda inicial, por defecto es la celda [0, 0]
-      plays: []         // pila de jugadas relizadas hasta el momento.
+      plays: []         // pila de jugadas realizadas hasta el momento.
     };
     this.handleClickInit = this.handleClickInit.bind(this);
     this.handleClick     = this.handleClick.bind(this);
@@ -76,7 +76,7 @@ class Game extends React.Component {
     
       this.pengine.query(queryInit, (success, response) => {
         if(success) {
-          this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")", (success, response) => {});          
+          this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")");          
           this.setState({
             initCell: cell
           });
@@ -153,13 +153,11 @@ class Game extends React.Component {
           turns: this.state.turns + 1,
           waiting: false,
         })
-        
       } else {
         // Prolog query will fail when the clicked color coincides with that in the top left cell.
         this.setState({
           waiting: false
         });
-        console.log("falló flick");
       }
     });
   }
@@ -175,8 +173,6 @@ class Game extends React.Component {
         this.setState({
           plays: response['Plays']
         })
-      } else {
-        console.log("fail pushPlays()");
       }
       this.findAdjacents(color);
     });
