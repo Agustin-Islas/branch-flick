@@ -46,6 +46,15 @@ body {
   font-size: 20px;
 }
 
+.panelHelp {
+  color: #DEDEDE;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px;
+  font-size: 20px;
+}
+
 .turnsLab {
   text-transform: uppercase;
 }
@@ -64,11 +73,11 @@ body {
   margin-bottom: 10px;
 }
 
-.playsLab {
+.playsLab, .playsBest {
   margin-bottom: 10px;
 }
 
-.playsStack {
+.playsStack, .bestPlayStack {
   display: flex;
   flex-direction: column;
   width: 50px;
@@ -117,6 +126,21 @@ body {
   font-size: 16px;
   margin-top: 30px;
   align-items: center; 
+}
+
+.btnHelp {
+  background-color: #D51212;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 20px;
+  margin-top: 10px;
+  margin-bottom: 30px;
+  align-items: center;
+  cursor: pointer;
 }
 
 .titule {

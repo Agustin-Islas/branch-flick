@@ -37,7 +37,9 @@ class Game extends React.Component {
       waiting: false,   // true si el juego esta procesando información, false en caso contrario
       captured: 1,      // total de celdas capturadas hasta el momento
       initCell: [0,0],  // celda inicial, por defecto es la celda [0, 0]
-      plays: []         // pila de jugadas realizadas hasta el momento.
+      plays: [],        // pila de jugadas realizadas hasta el momento.
+      bestPlay: ["g"],
+      capturedHelp: 0
     };
     this.handleClickInit = this.handleClickInit.bind(this);
     this.handleClick     = this.handleClick.bind(this);
@@ -221,6 +223,42 @@ class Game extends React.Component {
     })
   }
 
+  handleHelp() {
+    console.log("OK help!");
+    //consulta help a prolog
+    
+    let gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
+    let queryHelp = "help(" + gridS + "," + this.state.initCell + ", 3)";
+    this.pengine.query(queryHelp, (success, response) => {
+      console.log("fail");
+      if (success) {
+        this.pengine.query("sequenceColor(Stack)", (success, response) => {
+          if (success) {
+            this.setState({
+              bestPlay: response['Stack']
+            });
+            this.pengine.query("captured(Captureds)", (success, response) => {
+              if (success) {
+                this.setState({
+                  capturedHelp: response['Captureds']
+                });
+              } else {
+                console.log("fail captured");
+              }
+            });
+          } else {
+            console.log("fail sequenceColor");
+          }
+        });
+      } else {
+        console.log("fail help");
+      }
+    })
+    
+    //cargar state.bestPlay
+    //cargar capturesBest
+  }
+
   render() {
     if (this.state.grid === null) {
       return null;
@@ -246,7 +284,7 @@ class Game extends React.Component {
               <div className="capturedNum">{this.state.captured}</div>
 
               <div  className="playsLab">PLAYS</div>
-              <div id="playsStack" className="playsStack"> 
+              <div className="playsStack"> 
                 {
                   this.state.plays.map((cell, i) =>
                     <button
@@ -263,6 +301,27 @@ class Game extends React.Component {
                 onClick={(index) => this.handleClickInit(index)}
                 initCell={this.state.initCell}
             />
+        <div>
+          <div className="panelHelp">
+            <button className="btnHelp"
+                    onClick={() => this.handleHelp()}>
+              HELP
+            </button>
+            <div  className="playsBest">BEST PLAY</div>
+              <div className="bestPlayStack"> 
+                {
+                  this.state.bestPlay.map((cell, i) =>
+                    <button
+                    className="playBtn"
+                    style={{ backgroundColor: colorToCss(cell)}}
+                    key={i}
+                  />)}
+              </div>
+              <div className='capturedsBestPlay'>
+                  Captureds {this.state.bestPlay.length}
+              </div>
+          </div>
+        </div>
         </div>
         : 
         <div className='endGame'>

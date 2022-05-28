@@ -9,7 +9,10 @@
 		flickAdjacents/3,
 		findAdjacentC/2,
 		pushStackPlays/2,
-		resetStackPlays/0
+		resetStackPlays/0,
+		help/3,
+        captured/1,
+        sequenceColor/1
 	]).
 
 :-use_module(library(lists)).
@@ -19,6 +22,21 @@
 :-dynamic initCell/1.
 
 :-dynamic stackPlays/1.
+
+:-dynamic captured/1.
+:-dynamic sequenceColor/1.
+:-dynamic colors/1.
+:-dynamic saveAdj/1.
+
+saveAdj(_).
+
+colors([r, v, p, g, b, y]).
+
+% Almacena la longuitud de la sucuencia de colores con celdas capturadas.
+captured(_).
+
+% Almacena una lista con la secuencia de colores a retornar.
+sequenceColor(_).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Almacena la celda inicial del juego.
@@ -209,3 +227,136 @@ flick(Grid, X, Y, Color, FGrid):-
 setPos(Pos, NewElem, [H|T], [H|R]):-
 	Pos > -1, PosN is Pos-1, setPos(PosN, NewElem, T, R).
 setPos(0, NewElem, [_Elem|T], [NewElem|T]).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PROYECTO 2 - HELP
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+help(Grid, Origin, PE):-
+    findall(List,
+            (
+                forall(member(Elem, List), member(Elem, colors)),
+                length(List, Long), Long =< PE,
+                List =[First|_],
+                color(Origin, Grid, C),
+                First =\= C
+            ),
+            AllLists),
+    findMaxCaptured(AllLists, Grid).
+
+
+
+findMaxCaptured([List|Ls], Grid):-
+    findMaxAux(List,Grid),
+    resetGrid(Grid, GridCopy),
+    findMaxCaptured(Ls, GridCopy).
+
+findMaxAux(List, GridCopy):-
+	capturedCells(Adj), retract(saveAdj(_)), assert(saveAdj(Adj)),
+
+    forall(member(Color, List), flickAdjacents(GridCopy, Color, GridH)),
+    adyCStar([_X, _Y], GridH, Res),
+    actualizeCaptured(List, Res),
+
+	retract(capturedCells(_)), assert(capturedCells(Adj)),
+	retract(saveAdj(Adj)).
+
+actualizeCaptured(List, ListCaptureds):-
+    captured(Actual),
+    length(ListCaptureds, Cant),
+	saveAdj(Adj),
+	length(Adj, AdjPrev),
+    (Cant - AdjPrev) > Actual,
+    retract(captured(Actual)),
+    assert(captured(Cant)),
+    retract(sequenceColor(_)),
+    assert(sequenceColor(List)).
+
+resetGrid(Grid, [LL|A]):-
+    Grid = [L|Ls],
+    resetGrid(Ls, A),
+	resetAux(L, LL).
+resetGrid(L, A):-
+	resetAux(L, A).
+
+resetAux([X|Xs], [X|As]):-
+	resetAux(Xs, As).
+resetAux([], []).
+
+/*
+ * adyCStar(Origin, +Grid, -Res)
+ * Calcula el conjunto de celdas adyacentesC* de la celda Origin en la grilla Grid
+ * siguiendo una estrategia de propagación o expansión.
+ */
+
+adyCStar(Origin, Grid, Res) :-
+    adyCStarSpread([Origin], [], Grid, Res).
+
+/*
+ * adyCStarSpread(+Pend, +Vis, +Grid, -Res)
+ * Pend: por "pendientes", inicialmente es la lista [Origin], y en general es 
+ * el conjunto de celdas adyacentesC* a Origin que aún no fueron consideradas.
+ * Vis: por "visitados", inicialmente [], son las celdas adyacentesC* a la Origen 
+ * que ya fueron consideradas.
+ * Grid: idem adyCStar
+ * Res: idem adyCStar
+ * En cada paso se selecciona una celda de las pendientes, se pasa a visitados, y
+ * se agregan a pendientes todas aquellas adyacentes a la celda, del mismo color, que no estén
+ * ya ni en pendientes ni visitados.
+ */
+
+adyCStarSpread([], Vis, _Grid, Vis).
+
+adyCStarSpread(Pend, Vis, Grid, Res):-
+    Pend = [P|Ps],
+    findall(A, 
+	        (
+    	        adyC(P, Grid, A),
+        	    not(member(A, Pend)),
+            	not(member(A, Vis))
+	        ), 
+            AdyCP),
+    append(AdyCP, Ps, NPend),
+    adyCStarSpread(NPend, [P|Vis], Grid, Res).
+
+/* 
+ * adyC(+P, +Grid, -A)
+ */
+
+adyC(P, Grid, A):-
+    ady(P, Grid, A),
+    color(P, Grid, C),
+    color(A, Grid, C).
+
+/* 
+ * ady(+P, +Grid, -A)
+ */
+
+ady([X, Y], Grid, [X1, Y]):-
+    length(Grid, L),
+    X < L - 1,
+    X1 is X + 1.
+
+ady([X, Y], _Grid, [X1, Y]):-
+    X > 0,
+    X1 is X - 1.
+
+ady([X, Y], Grid, [X, Y1]):-
+    Grid = [F|_],
+    length(F, L),
+    Y < L - 1,
+    Y1 is Y + 1.
+
+ady([X, Y], _Grid, [X, Y1]):-
+    Y > 0,
+    Y1 is Y - 1.
+
+
+/* 
+ * color(P, Grid, C)
+ */
+
+color([X,Y], Grid, C):-
+    nth0(X, Grid, F),
+    nth0(Y, F, C).
