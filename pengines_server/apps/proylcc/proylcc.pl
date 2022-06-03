@@ -10,9 +10,11 @@
 		findAdjacentC/2,
 		pushStackPlays/2,
 		resetStackPlays/0,
-		help/3,
         captured/1,
-        sequenceColor/1
+        searchCombinations/2,
+		bestPlay/1,
+		maxCaptureds/1,
+		resetHelp/0
 	]).
 
 :-use_module(library(lists)).
@@ -24,19 +26,18 @@
 :-dynamic stackPlays/1.
 
 :-dynamic captured/1.
-:-dynamic sequenceColor/1.
-:-dynamic colors/1.
-:-dynamic saveAdj/1.
 
-saveAdj(_).
+:-dynamic colors/1.
+:-dynamic maxCaptureds/1.
+:-dynamic bestPlay/1.
 
 colors([r, v, p, g, b, y]).
 
 % Almacena la longuitud de la sucuencia de colores con celdas capturadas.
-captured(_).
+maxCaptureds(0).
 
 % Almacena una lista con la secuencia de colores a retornar.
-sequenceColor(_).
+bestPlay([[]]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Almacena la celda inicial del juego.
@@ -213,11 +214,11 @@ getPos(Grid, X, Y, Elem):-
 % Si Elem es igual a Color, no se produce cambio.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 flick(Grid, X, Y, Color, FGrid):-
-	nth0(X,Grid,Column),
-	nth0(Y,Column,Elem),
+	nth0(X, Grid, Column),
+	nth0(Y, Column, Elem),
 	Color \= Elem,
-	setPos(Y,Color,Column,FColumn),
-	setPos(X,FColumn,Grid,FGrid).
+	setPos(Y, Color, Column, FColumn),
+	setPos(X, FColumn, Grid, FGrid).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % setPos(+Pos, +NewElem, +List, -NewList)
@@ -233,94 +234,117 @@ setPos(0, NewElem, [_Elem|T], [NewElem|T]).
 % PROYECTO 2 - HELP
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-help(Grid, Origin, PE):-
+resetHelp():-
+    retract(maxCaptureds(_C)),
+    assert(maxCaptureds(0)),
+    retract(bestPlay(_L)),
+    assert(bestPlay([[]])).
+
+/* -L: bestPlay, -Cant: Long L*/
+searchCombinations(Depth, Grid):-
+    colors(Colors),
+    aux(Colors, Depth, Grid).
+
+aux([C|Cs], Depth, Grid):-
     findall(List,
-            (
-                forall(member(Elem, List), member(Elem, colors)),
-                length(List, Long), Long =< PE,
-                List =[First|_],
-                color(Origin, Grid, C),
-                First =\= C
-            ),
+            flickHelp(C, Depth, List),
             AllLists),
-    findMaxCaptured(AllLists, Grid).
+    findMaxCaptureds(Grid, AllLists, L, CantCaptureds),
+    actualizeBestPlay(L, CantCaptureds),
+    aux(Cs, Depth, Grid),
+    !.
 
+aux([], _Depth, _Grid).
 
+flickHelp(_Color, 0, []):-!.
+flickHelp(Color, Depth, [r|Ls]):-
+    Color \= r,
+    D is Depth - 1,
+    flickHelp(r, D, Ls).
+flickHelp(Color, Depth, [v|Ls]):-
+    Color \= v,
+    D is Depth - 1,
+    flickHelp(v, D, Ls).
+flickHelp(Color, Depth, [y|Ls]):-
+    Color \= y,
+    D is Depth - 1,
+    flickHelp(y, D, Ls).
+flickHelp(Color, Depth, [g|Ls]):-
+    Color \= g,
+    D is Depth - 1,
+    flickHelp(g, D, Ls).
+flickHelp(Color, Depth, [b|Ls]):-
+    Color \= b,
+    D is Depth - 1,
+    flickHelp(b, D, Ls).
+flickHelp(Color, Depth, [p|Ls]):-
+    Color \= p,
+    D is Depth - 1,
+    flickHelp(p, D, Ls).
 
-findMaxCaptured([List|Ls], Grid):-
-    findMaxAux(List,Grid),
-    resetGrid(Grid, GridCopy),
-    findMaxCaptured(Ls, GridCopy).
+findMaxCaptureds(Grid, [L|Ls], ListLs, CantLs):-
+    findMaxCaptureds(Grid, Ls, ListLs, CantLs),
+    findCaptureds(Grid, L, Cant),
+    CantLs >= Cant.
 
-findMaxAux(List, GridCopy):-
-	capturedCells(Adj), retract(saveAdj(_)), assert(saveAdj(Adj)),
+findMaxCaptureds(Grid, [L|_Ls], L, Cant):-
+    findCaptureds(Grid, L, Cant).
 
-    forall(member(Color, List), flickAdjacents(GridCopy, Color, GridH)),
-    adyCStar([_X, _Y], GridH, Res),
-    actualizeCaptured(List, Res),
+findCaptureds(Grid, [C|Cs], Cant):-
+   initCell([X, Y]),
+   flickHandler(C, X, Y, Grid, FGrid),
+   findCaptureds(FGrid, Cs, Cant).
+findCaptureds(Grid, [], Cant):-
+    initCell([X, Y]),
+    adyCStar([X, Y], Grid, Res),
+    length(Res, Cant),
+    !.
 
-	retract(capturedCells(_)), assert(capturedCells(Adj)),
-	retract(saveAdj(Adj)).
+flickHandler(Color, X, Y, Grid, FGrid):-
+   adyCStar([X, Y], Grid, Res),
+   flickAdj(Grid, Color, Res, FGrid).
 
-actualizeCaptured(List, ListCaptureds):-
-    captured(Actual),
-    length(ListCaptureds, Cant),
-	saveAdj(Adj),
-	length(Adj, AdjPrev),
-    (Cant - AdjPrev) > Actual,
-    retract(captured(Actual)),
-    assert(captured(Cant)),
-    retract(sequenceColor(_)),
-    assert(sequenceColor(List)).
+flickAdj(Grid, Color, [A|Adjs], FGrid):-
+    A = [X, Y],
+    flickP2(Grid, X, Y, Color, AuxGrid),
+    flickAdj(AuxGrid, Color, Adjs, FGrid).
 
-resetGrid(Grid, [LL|A]):-
-    Grid = [L|Ls],
-    resetGrid(Ls, A),
-	resetAux(L, LL).
-resetGrid(L, A):-
-	resetAux(L, A).
+flickAdj(Grid, _Color, [], Grid).
 
-resetAux([X|Xs], [X|As]):-
-	resetAux(Xs, As).
-resetAux([], []).
+actualizeBestPlay(List, CantCaptureds):-
+    maxCaptureds(Cant),
+    CantCaptureds > Cant,
+	!,
+    bestPlay(L),
+    retract(maxCaptureds(Cant)),
+    assert(maxCaptureds(CantCaptureds)),
+    retract(bestPlay(L)),
+    assert(bestPlay(List)).
 
-/*
- * adyCStar(Origin, +Grid, -Res)
- * Calcula el conjunto de celdas adyacentesC* de la celda Origin en la grilla Grid
- * siguiendo una estrategia de propagación o expansión.
- */
+flickP2(Grid, X, Y, Color, FGrid):-
+	nth0(X,Grid,Column),
+	nth0(Y,Column,_Elem),
+	setPos(Y,Color,Column,FColumn),
+	setPos(X,FColumn,Grid,FGrid).
 
 adyCStar(Origin, Grid, Res) :-
     adyCStarSpread([Origin], [], Grid, Res).
-
-/*
- * adyCStarSpread(+Pend, +Vis, +Grid, -Res)
- * Pend: por "pendientes", inicialmente es la lista [Origin], y en general es 
- * el conjunto de celdas adyacentesC* a Origin que aún no fueron consideradas.
- * Vis: por "visitados", inicialmente [], son las celdas adyacentesC* a la Origen 
- * que ya fueron consideradas.
- * Grid: idem adyCStar
- * Res: idem adyCStar
- * En cada paso se selecciona una celda de las pendientes, se pasa a visitados, y
- * se agregan a pendientes todas aquellas adyacentes a la celda, del mismo color, que no estén
- * ya ni en pendientes ni visitados.
- */
 
 adyCStarSpread([], Vis, _Grid, Vis).
 
 adyCStarSpread(Pend, Vis, Grid, Res):-
     Pend = [P|Ps],
-    findall(A, 
+    findall(A,
 	        (
-    	        adyC(P, Grid, A),
-        	    not(member(A, Pend)),
-            	not(member(A, Vis))
-	        ), 
+	        adyC(P, Grid, A),
+		    not(member(A, Pend)),
+	    	not(member(A, Vis))
+	        ),
             AdyCP),
     append(AdyCP, Ps, NPend),
     adyCStarSpread(NPend, [P|Vis], Grid, Res).
 
-/* 
+/*
  * adyC(+P, +Grid, -A)
  */
 
@@ -329,7 +353,7 @@ adyC(P, Grid, A):-
     color(P, Grid, C),
     color(A, Grid, C).
 
-/* 
+/*
  * ady(+P, +Grid, -A)
  */
 
@@ -353,7 +377,7 @@ ady([X, Y], _Grid, [X, Y1]):-
     Y1 is Y - 1.
 
 
-/* 
+/*
  * color(P, Grid, C)
  */
 

@@ -38,7 +38,7 @@ class Game extends React.Component {
       captured: 1,      // total de celdas capturadas hasta el momento
       initCell: [0,0],  // celda inicial, por defecto es la celda [0, 0]
       plays: [],        // pila de jugadas realizadas hasta el momento.
-      bestPlay: ["g"],
+      bestPlay: [],
       capturedHelp: 0
     };
     this.handleClickInit = this.handleClickInit.bind(this);
@@ -226,32 +226,40 @@ class Game extends React.Component {
   handleHelp() {
     console.log("OK help!");
     //consulta help a prolog
-    
+
+    let queryResetHelp = "resetHelp";
     let gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
-    let queryHelp = "help(" + gridS + "," + this.state.initCell + ", 3)";
-    this.pengine.query(queryHelp, (success, response) => {
-      console.log("fail");
-      if (success) {
-        this.pengine.query("sequenceColor(Stack)", (success, response) => {
-          if (success) {
-            this.setState({
-              bestPlay: response['Stack']
-            });
-            this.pengine.query("captured(Captureds)", (success, response) => {
+    let queryHelp = "searchCombinations(" + 2 + "," + gridS + ")";
+
+    this.pengine.query(queryResetHelp, (success, response) => {
+      if(success) {
+        console.log("reset");
+        this.pengine.query(queryHelp, (success, response) => {
+          if (!success) {
+            this.pengine.query("bestPlay(Stack)", (success, response) => {
               if (success) {
                 this.setState({
-                  capturedHelp: response['Captureds']
+                  bestPlay: response['Stack']
+                });
+                this.pengine.query("maxCaptureds(Captureds)", (success, response) => {
+                  if (success) {
+                    this.setState({
+                      capturedHelp: response['Captureds'] - this.state.captured
+                    });
+                  } else {
+                    console.log("fail captured");
+                  }
                 });
               } else {
-                console.log("fail captured");
+                console.log("fail sequenceColor");
               }
             });
           } else {
-            console.log("fail sequenceColor");
+            console.log("fail help");
           }
-        });
+        })
       } else {
-        console.log("fail help");
+        console.log("fail reset");
       }
     })
     
@@ -318,7 +326,7 @@ class Game extends React.Component {
                   />)}
               </div>
               <div className='capturedsBestPlay'>
-                  Captureds {this.state.bestPlay.length}
+                  Captureds {this.state.capturedHelp}
               </div>
           </div>
         </div>
