@@ -229,7 +229,6 @@ setPos(Pos, NewElem, [H|T], [H|R]):-
 	Pos > -1, PosN is Pos-1, setPos(PosN, NewElem, T, R).
 setPos(0, NewElem, [_Elem|T], [NewElem|T]).
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PROYECTO 2 - HELP
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -240,10 +239,31 @@ resetHelp():-
     retract(bestPlay(_L)),
     assert(bestPlay([[]])).
 
+searchCombinations(Depth, Grid):-
+    checkHelp(Grid, Depth, NewDepth),
+    Depth \= NewDepth,
+    colors(Colors),
+    aux(Colors, NewDepth, Grid), !.
+
 /* -L: bestPlay, -Cant: Long L*/
 searchCombinations(Depth, Grid):-
     colors(Colors),
     aux(Colors, Depth, Grid).
+
+checkHelp(Grid, Depth, Long):-
+    Colors = [],
+    initCell([X, Y]),
+    findall(Elem,
+            (getPos(Grid, X, Y, Elem), (not(member(Elem, Colors)))),
+            Colors),
+   /* forall((X, Y), (getPos(Grid, X, Y, Elem), (not(Elem, Colors), [Elem|Colors]))), */
+    length(Colors, Long),
+    Depth >= Long,
+    !.
+
+checkHelp(_Grid, Depth, Depth).
+
+aux([], _Depth, _Grid):-!.
 
 aux([C|Cs], Depth, Grid):-
     findall(List,
@@ -251,10 +271,9 @@ aux([C|Cs], Depth, Grid):-
             AllLists),
     findMaxCaptureds(Grid, AllLists, L, CantCaptureds),
     actualizeBestPlay(L, CantCaptureds),
-    aux(Cs, Depth, Grid),
-    !.
-
-aux([], _Depth, _Grid).
+    Depth > 1,
+    !,
+    aux(Cs, Depth, Grid).
 
 flickHelp(_Color, 0, []):-!.
 flickHelp(Color, Depth, [r|Ls]):-
@@ -282,34 +301,38 @@ flickHelp(Color, Depth, [p|Ls]):-
     D is Depth - 1,
     flickHelp(p, D, Ls).
 
+findMaxCaptureds(_Grid, [], [], 0):- !.
+
 findMaxCaptureds(Grid, [L|Ls], ListLs, CantLs):-
     findMaxCaptureds(Grid, Ls, ListLs, CantLs),
     findCaptureds(Grid, L, Cant),
-    CantLs >= Cant.
+    CantLs >= Cant, 
+    !.
 
 findMaxCaptureds(Grid, [L|_Ls], L, Cant):-
     findCaptureds(Grid, L, Cant).
 
-findCaptureds(Grid, [C|Cs], Cant):-
-   initCell([X, Y]),
-   flickHandler(C, X, Y, Grid, FGrid),
-   findCaptureds(FGrid, Cs, Cant).
 findCaptureds(Grid, [], Cant):-
     initCell([X, Y]),
     adyCStar([X, Y], Grid, Res),
     length(Res, Cant),
     !.
 
+findCaptureds(Grid, [C|Cs], Cant):-
+   initCell([X, Y]),
+   flickHandler(C, X, Y, Grid, FGrid),
+   findCaptureds(FGrid, Cs, Cant).
+
 flickHandler(Color, X, Y, Grid, FGrid):-
    adyCStar([X, Y], Grid, Res),
    flickAdj(Grid, Color, Res, FGrid).
+
+flickAdj(Grid, _Color, [], Grid):-!.
 
 flickAdj(Grid, Color, [A|Adjs], FGrid):-
     A = [X, Y],
     flickP2(Grid, X, Y, Color, AuxGrid),
     flickAdj(AuxGrid, Color, Adjs, FGrid).
-
-flickAdj(Grid, _Color, [], Grid).
 
 actualizeBestPlay(List, CantCaptureds):-
     maxCaptureds(Cant),
@@ -327,10 +350,11 @@ flickP2(Grid, X, Y, Color, FGrid):-
 	setPos(Y,Color,Column,FColumn),
 	setPos(X,FColumn,Grid,FGrid).
 
+
 adyCStar(Origin, Grid, Res) :-
     adyCStarSpread([Origin], [], Grid, Res).
 
-adyCStarSpread([], Vis, _Grid, Vis).
+adyCStarSpread([], Vis, _Grid, Vis):-!.
 
 adyCStarSpread(Pend, Vis, Grid, Res):-
     Pend = [P|Ps],

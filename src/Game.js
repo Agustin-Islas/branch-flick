@@ -227,9 +227,13 @@ class Game extends React.Component {
     console.log("OK help!");
     //consulta help a prolog
 
+    this.setState({
+      waiting: true
+    });
+
     let queryResetHelp = "resetHelp";
     let gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
-    let queryHelp = "searchCombinations(" + 2 + "," + gridS + ")";
+    let queryHelp = "searchCombinations(" + 3 + "," + gridS + ")";
 
     this.pengine.query(queryResetHelp, (success, response) => {
       if(success) {
@@ -263,6 +267,10 @@ class Game extends React.Component {
       }
     })
     
+
+    this.setState({
+      waiting: false
+    });
     //cargar state.bestPlay
     //cargar capturesBest
   }
