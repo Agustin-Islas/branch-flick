@@ -55,6 +55,12 @@ body {
   font-size: 20px;
 }
 
+.help {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 250px;
+}
+
 .turnsLab {
   text-transform: uppercase;
 }
@@ -83,6 +89,27 @@ body {
   width: 50px;
   max-height: 225px;
   overflow-y: auto;
+}
+
+.bestPlayStack {
+  width: 100%;
+  align-items: center;
+}
+
+.capturedsBestPlay{
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.capturedsBestPlay > span {
+  width: 100%;
+  text-align: center;
+}
+
+.pe {
+  margin-bottom: 10px;
+  font-size: 20px;
 }
 
 .playBtn {

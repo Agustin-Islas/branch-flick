@@ -35,17 +35,20 @@ class Game extends React.Component {
       grid: null,       // grilla de colores
       complete: false,  // true if game is complete, false otherwise
       waiting: false,   // true si el juego esta procesando información, false en caso contrario
-      captured: 1,      // total de celdas capturadas hasta el momento
+      captured: 0,      // total de celdas capturadas hasta el momento
       initCell: [0,0],  // celda inicial, por defecto es la celda [0, 0]
-      plays: [],        // pila de jugadas realizadas hasta el momento.
-      bestPlay: [],
-      capturedHelp: 0
+      plays: [],        // pila de jugadas realizadas hasta el momento
+      capturedInit: [], // celdas capturadas antes del primer movimiento
+      bestPlay: [],     // mejor jugada posible obtenida luego de invocar a la función handleHelp
+      PE: 0,            // profundidad estrategica
+      capturedHelp: 0   // cantidad de celdas capturadas por bestPlay
     };
     this.handleClickInit = this.handleClickInit.bind(this);
     this.handleClick     = this.handleClick.bind(this);
     this.findAdjacents   = this.findAdjacents.bind(this);
     this.capturedCells   = this.capturedCells.bind(this);
     this.checkEnd        = this.checkEnd.bind(this);
+    this.handleHelp      = this.handleHelp.bind(this);
     this.handlePengineCreate = this.handlePengineCreate.bind(this);
     this.pengine = new PengineClient(this.handlePengineCreate);
   }
@@ -60,8 +63,15 @@ class Game extends React.Component {
         
         // resetea el estado plays a vacío.
         this.pengine.query("resetStackPlays", (success, response) => {
+          
+          // pide al usuario la profundidad estrategica.
+          const pe =  window.prompt("Insert PE(strategic depth)")
+          this.setState({
+              PE: (pe !== null && Number(pe))? pe : 1
+          });
+
           // setea la celda [0, 0] como inicial.
-            this.handleClickInit("0.0");
+          this.handleClickInit("0.0");
         });
       }
     });
@@ -81,6 +91,17 @@ class Game extends React.Component {
           this.pengine.query("setAdjacent(" +  Number(cell[0]) + "," + Number(cell[1]) + ")");          
           this.setState({
             initCell: cell
+          });
+          const gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
+
+          // Calcula adyacencias asociadas a a celda inicial.
+          this.pengine.query("adyCStar([" + Number(cell[0]) + "," + Number(cell[1]) + "]," + gridS + ", Res)", (success, response) => {
+            if(success) {
+              this.setState({
+                capturedInit: response['Res'],
+                captured: response['Res'].length
+              });
+            }
           });
         }
       });
@@ -114,9 +135,35 @@ class Game extends React.Component {
    * @param color char que representa el color selecionado.
    */
   handleClick(color) {
+
     // No action on click if game is complete or we are waiting.
     if (this.state.complete || this.state.waiting) {
       return;
+    }
+
+    const gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
+
+    if(this.state.turns === 0) {
+      this.setState({
+        waiting: true
+      });
+      
+      let queryFlick;
+      for(let i=0; i < this.state.capturedInit.length; i++) {
+        queryFlick = "flickInit(" + gridS + "," + this.state.capturedInit[i][0] + "," + this.state.capturedInit[i][1]
+                     + "," + color + ", FGrid)";
+        this.pengine.query(queryFlick, (success, response) => {
+          if (success) {
+            this.setState({
+              grid: response['FGrid']
+            });
+          }
+        });
+      }
+
+      this.setState({
+        waiting: false
+      });
     }
     // Build Prolog query to apply the color flick.
     // The query will be like:
@@ -135,7 +182,6 @@ class Game extends React.Component {
     //        [r,b,b,v,p,y,p,r,b,g,p,y,b,r],
     //        [v,g,p,b,v,v,g,g,g,b,v,g,g,g]],r, Grid)
     
-    const gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
     const queryS = `flickAdjacents(${gridS},${color},Grid)`;
 
     this.setState({
@@ -223,56 +269,51 @@ class Game extends React.Component {
     })
   }
 
+  /**
+   * Busca la mejor jugada, basado en la estrategia de profundidad seleccionada.
+   * En caso de que la profundidad sea mayor a la cantidad de colores distintos en la grilla,
+   * buscará la jugada mas optima que complete la grilla.
+   */
   handleHelp() {
-    console.log("OK help!");
     //consulta help a prolog
-
     this.setState({
       waiting: true
     });
 
     let queryResetHelp = "resetHelp";
     let gridS = JSON.stringify(this.state.grid).replaceAll('"', "");
-    let queryHelp = "searchCombinations(" + 3 + "," + gridS + ")";
+    let queryHelp = "searchCombinations(" + this.state.PE + "," + gridS + ")";
 
+    // resetea en prolog las variables dinamicas que guardan bestPlay y maxCaptureds
     this.pengine.query(queryResetHelp, (success, response) => {
       if(success) {
-        console.log("reset");
+        // invoca ala funcion en prolog que realiza la busqueda de la mejor jugada posible.
         this.pengine.query(queryHelp, (success, response) => {
           if (!success) {
+            // pide la mejor jugada obtenida luego de la busqueda.
             this.pengine.query("bestPlay(Stack)", (success, response) => {
               if (success) {
                 this.setState({
                   bestPlay: response['Stack']
                 });
+                // pide la cantidad de celdas capturadas por la jugada obtendida de la busqueda.s
                 this.pengine.query("maxCaptureds(Captureds)", (success, response) => {
                   if (success) {
                     this.setState({
                       capturedHelp: response['Captureds'] - this.state.captured
                     });
-                  } else {
-                    console.log("fail captured");
                   }
                 });
-              } else {
-                console.log("fail sequenceColor");
               }
             });
-          } else {
-            console.log("fail help");
           }
         })
-      } else {
-        console.log("fail reset");
       }
     })
-    
 
     this.setState({
       waiting: false
     });
-    //cargar state.bestPlay
-    //cargar capturesBest
   }
 
   render() {
@@ -318,24 +359,30 @@ class Game extends React.Component {
                 initCell={this.state.initCell}
             />
         <div>
-          <div className="panelHelp">
+        <div className="panelHelp">
             <button className="btnHelp"
                     onClick={() => this.handleHelp()}>
               HELP
             </button>
-            <div  className="playsBest">BEST PLAY</div>
+            <div className='pe'>
+              {"PE: "  + this.state.PE}
+            </div>
+            <div className='help'>
               <div className="bestPlayStack"> 
+                BEST PLAY
                 {
                   this.state.bestPlay.map((cell, i) =>
-                    <button
-                    className="playBtn"
-                    style={{ backgroundColor: colorToCss(cell)}}
-                    key={i}
+                  <button
+                  className="playBtn"
+                  style={{ backgroundColor: colorToCss(cell)}}
+                  key={i}
                   />)}
               </div>
               <div className='capturedsBestPlay'>
-                  Captureds {this.state.capturedHelp}
+                  <span> Captureds </span>
+                  <span> {this.state.capturedHelp !== 0 ? this.state.capturedHelp : ""} </span>
               </div>
+            </div>
           </div>
         </div>
         </div>

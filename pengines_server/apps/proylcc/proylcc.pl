@@ -6,6 +6,7 @@
 		stackPlays/1,
 		setAdjacent/2,
 		checkEnd/1,
+        flickInit/5,
 		flickAdjacents/3,
 		findAdjacentC/2,
 		pushStackPlays/2,
@@ -31,12 +32,20 @@
 :-dynamic maxCaptureds/1.
 :-dynamic bestPlay/1.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% colors(Colors)
+% almacena en una lista todos los colores que contiene la grilla.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 colors([r, v, p, g, b, y]).
 
-% Almacena la longuitud de la sucuencia de colores con celdas capturadas.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Almacena la longitud de la sucuencia de colores con celdas capturadas.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 maxCaptureds(0).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Almacena una lista con la secuencia de colores a retornar.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 bestPlay([[]]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -221,6 +230,21 @@ flick(Grid, X, Y, Color, FGrid):-
 	setPos(X, FColumn, Grid, FGrid).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% flickInit(+Grid, +X, +Y, +Color, -FGrid)
+% Identico a flick pero actualiza adjacentC.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+flickInit(Grid, X, Y, Color, FGrid):-
+	nth0(X, Grid, Column),
+	nth0(Y, Column, Elem),
+	Color \= Elem,
+	setPos(Y, Color, Column, FColumn),
+	setPos(X, FColumn, Grid, FGrid),
+    adjacentC(L),
+    union(L,[[X, Y]], NewL),
+    retract(adjacentC(L)),
+    assert(adjacentC(NewL)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % setPos(+Pos, +NewElem, +List, -NewList)
 % NewList es el resultado de haber insertado NewElem en la posicion Pos de 
 % List.
@@ -233,36 +257,61 @@ setPos(0, NewElem, [_Elem|T], [NewElem|T]).
 % PROYECTO 2 - HELP
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% resetHelp()
+% setea maxCaptureds y bestPlay a sus valores iniciales.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 resetHelp():-
     retract(maxCaptureds(_C)),
     assert(maxCaptureds(0)),
     retract(bestPlay(_L)),
     assert(bestPlay([[]])).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% searchCombinations(+Depth, +Grid)
+% Busca la jugada de a lo sumo Depth movimientos que consiga la mayor cantidad
+% de celdas capturadas en Grid.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 searchCombinations(Depth, Grid):-
-    checkHelp(Grid, Depth, NewDepth),
-    Depth \= NewDepth,
+    check(Grid, Depth, NewDepth),
     colors(Colors),
-    aux(Colors, NewDepth, Grid), !.
+    aux(Colors, NewDepth, Grid).
 
-/* -L: bestPlay, -Cant: Long L*/
-searchCombinations(Depth, Grid):-
-    colors(Colors),
-    aux(Colors, Depth, Grid).
-
-checkHelp(Grid, Depth, Long):-
-    Colors = [],
-    initCell([X, Y]),
-    findall(Elem,
-            (getPos(Grid, X, Y, Elem), (not(member(Elem, Colors)))),
-            Colors),
-   /* forall((X, Y), (getPos(Grid, X, Y, Elem), (not(Elem, Colors), [Elem|Colors]))), */
-    length(Colors, Long),
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% check(+Grid, +Depth, -Long)
+% Long es Depth si la grilla Grid está a Depth + n(n < 0) movimientos de
+% completarse. Caso contrario Long es igual a la cantidad de movimientos 
+% restantes.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+check(Grid, Depth, Long):-
+    checkAux(Grid, Colors),
+    length(Colors, LongAux),
+    Long is LongAux - 1,
     Depth >= Long,
     !.
+check(_Grid, Depth, Depth).
 
-checkHelp(_Grid, Depth, Depth).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkAux(+[L|Ls], -NewColors)
+% NewColors es una lista que contiene todos los colores en la grilla [L|Ls] 
+% sin repeticiones.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+checkAux([], []):- !.
+
+checkAux([L|Ls], NewColors):-
+    sort(L, NewL),
+    checkAux(Ls, Cs),
+    union(Cs, NewL, NewColors).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% aux(+[C|Cs], +Depth, +Grid)
+% Recibe una lista de colores [C|Cs] y busca de entre todas las combinaciones
+% de colores con longitud Depth la lista que consiga la mayor cantidad de 
+% celdas capturadas en Grid. Actualiza las variables dinamicas bestPlay y 
+% maxCaptureds.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 aux([], _Depth, _Grid):-!.
 
 aux([C|Cs], Depth, Grid):-
@@ -275,6 +324,13 @@ aux([C|Cs], Depth, Grid):-
     !,
     aux(Cs, Depth, Grid).
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% flickHelp(+Color, +Depth, -List)
+% List es el resultado de encolar recursivamente colores, donde no puede
+% repetirse el mismo color dos o mas veces seguidas, la longitud de la lista
+% List es Depth.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 flickHelp(_Color, 0, []):-!.
 flickHelp(Color, Depth, [r|Ls]):-
     Color \= r,
@@ -301,6 +357,13 @@ flickHelp(Color, Depth, [p|Ls]):-
     D is Depth - 1,
     flickHelp(p, D, Ls).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findMaxCaptureds(+Grid, +[L|Ls], -ListLs, -CantLs)
+% Dado una lista de listas [L|Ls] donde se almacenan todas las posibles 
+% secuencias de colores. Busca la secuencia de colores que consigue la mayor
+% cantidad de celdas capturadas en Grid y retorna en ListLs esa secuencia y en
+% CantLs la cantidad capturada.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 findMaxCaptureds(_Grid, [], [], 0):- !.
 
 findMaxCaptureds(Grid, [L|Ls], ListLs, CantLs):-
@@ -312,6 +375,11 @@ findMaxCaptureds(Grid, [L|Ls], ListLs, CantLs):-
 findMaxCaptureds(Grid, [L|_Ls], L, Cant):-
     findCaptureds(Grid, L, Cant).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findCaptureds(+Grid, +[C|Cs], -Cant)
+% Retorna de Cant la cantidad de celdas capturadas al aplicarle flick a la
+% grilla Grid para cada color en [C|Cs].
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 findCaptureds(Grid, [], Cant):-
     initCell([X, Y]),
     adyCStar([X, Y], Grid, Res),
@@ -320,13 +388,22 @@ findCaptureds(Grid, [], Cant):-
 
 findCaptureds(Grid, [C|Cs], Cant):-
    initCell([X, Y]),
-   flickHandler(C, X, Y, Grid, FGrid),
+   flickHandle(C, X, Y, Grid, FGrid),
    findCaptureds(FGrid, Cs, Cant).
 
-flickHandler(Color, X, Y, Grid, FGrid):-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% flickHandle(+Color, +X, +Y, +Grid, -FGrid)
+% Busca y aplica flick a el color Color de todas las celdas adyacentes a [X, Y] en la
+% grilla Grid, retorna en FGrid la grilla Grid luego de los cambios.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+flickHandle(Color, X, Y, Grid, FGrid):-
    adyCStar([X, Y], Grid, Res),
    flickAdj(Grid, Color, Res, FGrid).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% flickAdj(+Grid, +Color, +[A|Adjs], -FGrid)
+% Funcion auxiliar de flickHandler para realizar el flick de celdad adyacentes.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 flickAdj(Grid, _Color, [], Grid):-!.
 
 flickAdj(Grid, Color, [A|Adjs], FGrid):-
@@ -334,6 +411,13 @@ flickAdj(Grid, Color, [A|Adjs], FGrid):-
     flickP2(Grid, X, Y, Color, AuxGrid),
     flickAdj(AuxGrid, Color, Adjs, FGrid).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% actualizeBestPlay(+List, +CantCaptureds)
+% Si la cantidad de celdas capturadas CantCaptureds de la secuencia de colores
+% List, es mayor a la cantidad de capturadas actualmente almacenada en la 
+% variable dinamica maxCaptureds. Setea List como bestPlay y CantCaptureds 
+% como maxCaptureds.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 actualizeBestPlay(List, CantCaptureds):-
     maxCaptureds(Cant),
     CantCaptureds > Cant,
@@ -344,6 +428,10 @@ actualizeBestPlay(List, CantCaptureds):-
     retract(bestPlay(L)),
     assert(bestPlay(List)).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% flickP2(+Grid, +X, +Y, +Color, -FGrid)
+% Funcion identica a Flick/5, pero sin chequeo de color.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 flickP2(Grid, X, Y, Color, FGrid):-
 	nth0(X,Grid,Column),
 	nth0(Y,Column,_Elem),
@@ -351,6 +439,9 @@ flickP2(Grid, X, Y, Color, FGrid):-
 	setPos(X,FColumn,Grid,FGrid).
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% FUNCIONES PROVISTAS POR LA CATEDRA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 adyCStar(Origin, Grid, Res) :-
     adyCStarSpread([Origin], [], Grid, Res).
 
